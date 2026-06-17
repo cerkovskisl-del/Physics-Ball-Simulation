@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <title>Bumbiņu Duelis</title>
+    <style>
+        body { background-color: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        canvas { background: #16161e; border-radius: 50%; border: 4px solid #fff; }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="500" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const radius = canvas.width / 2;
+
+// Bumbiņu objekti
+let balls = [
+    { x: 200, y: 250, vx: 2, vy: 3, r: 20, color: '#41a7fc' }, // Zilā
+    { x: 300, y: 250, vx: -3, vy: -2, r: 20, color: '#ff4b4b' } // Sarkanā
+];
+
+function update() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Zīmējam centru/fonu tīklam (pēc izvēles)
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    
+    balls.forEach(ball => {
+        // Kustība
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Pārbaudām sadursmi ar lielā apļa (arēnas) malu
+        let dx = ball.x - radius;
+        let dy = ball.y - radius;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist + ball.r > radius) {
+            // Aprēķinām atlekšanas leņķi no apļa malas
+            let nx = dx / dist;
+            let ny = dy / dist;
+            let dot = ball.vx * nx + ball.vy * ny;
+            ball.vx -= 2 * dot * nx;
+            ball.vy -= 2 * dot * ny;
+            
+            // Atbīdām bumbiņu atpakaļ arēnas iekšienē, lai neiestrūktu
+            ball.x = radius + nx * (radius - ball.r - 1);
+            ball.y = radius + ny * (radius - ball.r - 1);
+        }
+
+        // Zīmējam bumbiņu
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+        ctx.closePath();
+    });
+
+    // Vienkāršota divu bumbiņu savstarpējā sadursme
+    let dx = balls[0].x - balls[1].x;
+    let dy = balls[0].y - balls[1].y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < balls[0].r + balls[1].r) {
+        // Apmaināmies ar ātrumiem (elastīgā sadursme)
+        let tempVx = balls[0].vx;
+        let tempVy = balls[0].vy;
+        balls[0].vx = balls[1].vx;
+        balls[0].vy = balls[1].vy;
+        balls[1].vx = tempVx;
+        balls[1].vy = tempVy;
+    }
+
+    requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>
