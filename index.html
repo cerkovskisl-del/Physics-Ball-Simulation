@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Bug Fixed Edition</title>
+    <title>Bouncing Ball Duel - Speed Damage Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -125,7 +125,7 @@ let laserBeam = null;
 
 const WEAPONS = {
     NONE: { id: 'NONE', name: 'UNARMED', icon: '✊', type: 'MELEE', dmg: 1 },
-    KNIFE: { id: 'KNIFE', name: 'SWORD', icon: '⚔️', type: 'MELEE', dmg: 2 },
+    KNIFE: { id: 'KNIFE', name: 'SWORD', icon: '⚔️', type: 'MELEE', dmg: 2.5 },
     PISTOL: { id: 'PISTOL', name: 'PISTOL', icon: '🔫', type: 'RANGED', fireCount: 3, speed: 7, spread: 0.1, dmg: 1 },
     SHOTGUN: { id: 'SHOTGUN', name: 'SHOTGUN', icon: '💥', type: 'RANGED', fireCount: 8, speed: 8, spread: 0.5, dmg: 1 },
     LASER: { id: 'LASER', name: 'MEGA LASER', icon: '⚡', type: 'LASER', dmg: 2 },
@@ -231,7 +231,7 @@ class Ball {
             this.vy -= 2 * dot * ny;
             
             let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            speed = Math.min(speed * 1.04, 7.5); 
+            speed = Math.min(speed * 1.05, 7.5); // Pieaugums atsitienā
             if(speed < 2) speed = 3.5;
             
             let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.45;
@@ -402,6 +402,7 @@ function handleGameOver(loser) {
     document.getElementById('overlay').style.display = 'flex';
 }
 
+// JAUNĀ MEHĀNIKA: Sadursmju loģika, kur damage saņem tas, kuram mazāks ātrums!
 function handleBallCollisions() {
     if (gameOver) return;
     let b1 = balls[0]; let b2 = balls[1];
@@ -410,6 +411,11 @@ function handleBallCollisions() {
     dist = Math.max(0.1, dist);
 
     if (dist < b1.r + b2.r) {
+        // Izrēķinām abu bumbiņu pašreizējo ātrumu
+        let speed1 = Math.sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
+        let speed2 = Math.sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
+
+        // Standarta elastīgā bumbiņu atsišanās matemātika
         let nx = dx / dist; let ny = dy / dist;
         let kx = b1.vx - b2.vx; let ky = b1.vy - b2.vy;
         let p = 2 * (nx * kx + ny * ky) / 2;
@@ -425,8 +431,19 @@ function handleBallCollisions() {
         b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
         b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
 
-        if (b1.weapon && b1.weapon.type === 'MELEE') { b2.takeDamage(b1.weapon.dmg); b1.weapon = WEAPONS.NONE; }
-        if (b2.weapon && b2.weapon.type === 'MELEE') { b1.takeDamage(b2.weapon.dmg); b2.weapon = WEAPONS.NONE; }
+        // KUSTĪBAS DAMAGE APSTRĀDE: Kurai ātrums bija mazāks, tā dabū pa mizu!
+        if (speed1 > speed2) {
+            // b1 ietriecas un nodara bojājumus b2
+            let damage = (b1.weapon && b1.weapon.type === 'MELEE') ? b1.weapon.dmg : 1;
+            b2.takeDamage(damage);
+            if (b1.weapon.type === 'MELEE') b1.weapon = WEAPONS.NONE;
+        } else if (speed2 > speed1) {
+            // b2 ietriecas un nodara bojājumus b1
+            let damage = (b2.weapon && b2.weapon.type === 'MELEE') ? b2.weapon.dmg : 1;
+            b1.takeDamage(damage);
+            if (b2.weapon.type === 'MELEE') b2.weapon = WEAPONS.NONE;
+        }
+        
         updateUI();
     }
 }
@@ -501,7 +518,6 @@ function processGame() {
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
     }
 
-    // LABOTS: Pilnībā droša ieroču paņemšanas un tūlītējas izšaušanas loģika bez crash iespējamības
     if (activeItem && !gameOver) {
         activeItem.pulse += 0.08;
         let pulseSize = Math.sin(activeItem.pulse) * 3;
@@ -540,7 +556,9 @@ function processGame() {
                     let chosenWeapon = WEAPONS[activeItem.type];
                     ball.weapon = chosenWeapon;
                     shootWeapon(ball, chosenWeapon);
-                    ball.weapon = WEAPONS.NONE; // Atgriežam statusu tikai pēc veiksmīga šāviena procesa beigām
+                    if (chosenWeapon.type !== 'MELEE') {
+                        ball.weapon = WEAPONS.NONE;
+                    }
                 }
                 activeItem = null;
                 updateUI();
