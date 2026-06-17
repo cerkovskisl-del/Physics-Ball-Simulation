@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Unbreakable Edition</title>
+    <title>Bouncing Ball Duel - Immortal Physics Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -63,7 +63,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(5, 7, 15, 0.95);
+            background: rgba(5, 7, 15, 0.9);
             border-radius: 50%;
             z-index: 10;
         }
@@ -186,7 +186,7 @@ class Ball {
     }
 
     update() {
-        // MAKSIMĀLĀ DROŠĪBAS BARJERA PRET PAZUŠANU:
+        // JA NOTIEK KĻŪDA, AUTOMĀTISKI TELEPORTĒ ATPAKAĻ (Bumbas vairs nekad nepazudīs)
         if (isNaN(this.x) || isNaN(this.y) || isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0)) {
             this.x = this.isLeft ? 160 : 390;
             this.y = 275;
@@ -194,6 +194,8 @@ class Ball {
             this.vx = Math.cos(randAngle) * 3.5;
             this.vy = Math.sin(randAngle) * 3.5;
         }
+
+        if (gameOver) return; // Ja spēle beigusies, apstādinām kustību, bet turpinām zīmēt!
 
         this.trail.push({ x: this.x, y: this.y });
         if (this.trail.length > 10) this.trail.shift();
@@ -207,7 +209,7 @@ class Ball {
         let dx = this.x - radius;
         let dy = this.y - radius;
         let dist = Math.sqrt(dx * dx + dy * dy);
-        dist = Math.max(0.1, dist); // Neļauj dalīt ar 0
+        dist = Math.max(0.1, dist);
 
         if (dist + this.r > radius) {
             let nx = dx / dist; 
@@ -233,8 +235,6 @@ class Ball {
     }
 
     draw(ctx) {
-        if (isNaN(this.x) || isNaN(this.y)) return; // Drošība zīmējot
-
         this.trail.forEach((t, i) => {
             if(isNaN(t.x) || isNaN(t.y)) return;
             ctx.beginPath();
@@ -290,6 +290,7 @@ class Ball {
     }
 
     takeDamage(amount) {
+        if (gameOver) return;
         this.hp -= amount;
         this.hitTimer = 6;
         triggerShake(6, 10);
@@ -311,7 +312,7 @@ class Bullet {
             if (target) {
                 let dx = target.x - this.x; let dy = target.y - this.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                dist = Math.max(1, dist); // Droša distance nūjiņai
+                dist = Math.max(1, dist);
                 this.vx += (dx / dist) * 0.35;
                 this.vy += (dy / dist) * 0.35;
                 
@@ -324,7 +325,6 @@ class Bullet {
         this.life--;
     }
     draw(ctx) {
-        if(isNaN(this.x) || isNaN(this.y)) return;
         ctx.beginPath();
         if (this.type === 'MAGIC') {
             ctx.arc(this.x, this.y, 6.5, 0, Math.PI * 2);
@@ -370,7 +370,6 @@ function spawnArenaItem() {
 setInterval(spawnArenaItem, 2500);
 
 function updateUI() {
-    if(!balls[0] || !balls[1]) return;
     document.getElementById('blueHearts').innerText = '❤️'.repeat(Math.max(0, balls[0].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[0].hp));
     document.getElementById('redHearts').innerText = '❤️'.repeat(Math.max(0, balls[1].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[1].hp));
     document.getElementById('blueWeapon').innerText = balls[0].weapon.name;
@@ -387,11 +386,11 @@ function handleGameOver(loser) {
 }
 
 function handleBallCollisions() {
+    if (gameOver) return;
     let b1 = balls[0]; let b2 = balls[1];
-    if(!b1 || !b2) return;
     let dx = b2.x - b1.x; let dy = b2.y - b1.y;
     let dist = Math.sqrt(dx*dx + dy*dy);
-    dist = Math.max(0.1, dist); // Drošība pret 0
+    dist = Math.max(0.1, dist);
 
     if (dist < b1.r + b2.r) {
         let nx = dx / dist; let ny = dy / dist;
@@ -409,22 +408,15 @@ function handleBallCollisions() {
         b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
         b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
 
-        if (b1.weapon.type === 'MELEE') {
-            b2.takeDamage(b1.weapon.dmg);
-            b1.weapon = WEAPONS.NONE;
-        }
-        if (b2.weapon.type === 'MELEE') {
-            b1.takeDamage(b2.weapon.dmg);
-            b2.weapon = WEAPONS.NONE;
-        }
+        if (b1.weapon.type === 'MELEE') { b2.takeDamage(b1.weapon.dmg); b1.weapon = WEAPONS.NONE; }
+        if (b2.weapon.type === 'MELEE') { b1.takeDamage(b2.weapon.dmg); b2.weapon = WEAPONS.NONE; }
         updateUI();
     }
 }
 
-// STRĀDĀ 100% DROŠI: Aprēķinos tagad ir aizsardzība pret bumbu pārklāšanos
 function shootWeapon(ball, wp) {
     let target = balls.find(b => b !== ball);
-    if (!target || !wp) return;
+    if (!target || !wp || gameOver) return;
 
     if (wp.type === 'LASER') {
         laserBeam = { fromX: ball.x, fromY: ball.y, toX: target.x, toY: target.y, timer: 15 };
@@ -434,7 +426,7 @@ function shootWeapon(ball, wp) {
 
     let dx = target.x - ball.x;
     let dy = target.y - ball.y;
-    if(dx === 0 && dy === 0) { dx = 1; dy = 1; } // Novērš NaN rašanos
+    if(dx === 0 && dy === 0) { dx = 1; dy = 1; }
 
     let baseAngle = Math.atan2(dy, dx);
     for (let i = 0; i < wp.fireCount; i++) {
@@ -452,8 +444,7 @@ function shootWeapon(ball, wp) {
 }
 
 function processGame() {
-    if (gameOver) return;
-
+    // SVARĪGI: Spēles cikls vairs nekad neapstājas (RequestAnimationFrame griežas vienmēr)
     let translateX = 0; let translateY = 0;
     if (screenShakeTimer > 0) {
         translateX = (Math.random() - 0.5) * screenShakeIntensity;
@@ -466,6 +457,7 @@ function processGame() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Fona režģis
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.015)';
     ctx.lineWidth = 1;
     for (let i = 0; i < canvas.width; i += 25) {
@@ -473,7 +465,8 @@ function processGame() {
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
     }
 
-    if (activeItem) {
+    // Lietu rašanās loģika (Tikai ja spēle aktīva)
+    if (activeItem && !gameOver) {
         activeItem.pulse += 0.08;
         let pulseSize = Math.sin(activeItem.pulse) * 3;
 
@@ -521,13 +514,11 @@ function processGame() {
     if (laserBeam && laserBeam.timer > 0) {
         ctx.save();
         ctx.beginPath();
-        if(!isNaN(laserBeam.fromX) && !isNaN(laserBeam.toX)) {
-            ctx.moveTo(laserBeam.fromX, laserBeam.fromY);
-            ctx.lineTo(laserBeam.toX, laserBeam.toY);
-            ctx.strokeStyle = '#ff0055';
-            ctx.lineWidth = Math.max(1, laserBeam.timer);
-            ctx.stroke();
-        }
+        ctx.moveTo(laserBeam.fromX, laserBeam.fromY);
+        ctx.lineTo(laserBeam.toX, laserBeam.toY);
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = Math.max(1, laserBeam.timer);
+        ctx.stroke();
         ctx.restore();
         laserBeam.timer -= 1.5;
     }
@@ -536,33 +527,37 @@ function processGame() {
     handleBallCollisions();
     balls.forEach(b => b.draw(ctx));
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        let bullet = bullets[i];
-        if (!bullet) continue;
-        bullet.update();
+    // Ložu atjaunināšana
+    if (!gameOver) {
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let bullet = bullets[i];
+            if (!bullet) continue;
+            bullet.update();
 
-        balls.forEach(ball => {
-            let dx = bullet.x - ball.x; let dy = bullet.y - ball.y;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < ball.r && bullet.owner !== ball) {
-                ball.takeDamage(bullet.dmg);
-                bullets.splice(i, 1);
-                return;
-            }
-        });
+            balls.forEach(ball => {
+                let dx = bullet.x - ball.x; let dy = bullet.y - ball.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < ball.r && bullet.owner !== ball) {
+                    ball.takeDamage(bullet.dmg);
+                    bullets.splice(i, 1);
+                    return;
+                }
+            });
 
-        if (bullets[i]) {
-            bullet.draw(ctx);
-            let adx = bullet.x - radius; let ady = bullet.y - radius;
-            if (Math.sqrt(adx*adx + ady*ady) > radius || bullet.life <= 0 || isNaN(bullet.x)) {
-                bullets.splice(i, 1);
+            if (bullets[i]) {
+                bullet.draw(ctx);
+                let adx = bullet.x - radius; let ady = bullet.y - radius;
+                if (Math.sqrt(adx*adx + ady*ady) > radius || bullet.life <= 0) {
+                    bullets.splice(i, 1);
+                }
             }
         }
     }
 
+    // Daļiņas
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
-        if (particles[i].life <= 0 || isNaN(particles[i].x)) {
+        if (particles[i].life <= 0) {
             particles.splice(i, 1);
         } else {
             particles[i].draw(ctx);
