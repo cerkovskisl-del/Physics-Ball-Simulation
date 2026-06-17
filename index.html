@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Meme Edition</title>
+    <title>Bouncing Ball Duel - Meme Skins Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -93,12 +93,12 @@
 <div id="game-container">
     <div id="ui">
         <div class="player-info blue-side">
-            <span class="player-name">Pepe</span>
+            <span class="player-name">Pepe 🐸</span>
             <div id="blueHearts" class="hearts">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
             <div><span id="blueWeapon" class="weapon-badge">UNARMED</span></div>
         </div>
         <div class="player-info red-side">
-            <span class="player-name">MrBeast</span>
+            <span class="player-name">MrBeast 🐯</span>
             <div id="redHearts" class="hearts">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
             <div><span id="redWeapon" class="weapon-badge">UNARMED</span></div>
         </div>
@@ -174,10 +174,11 @@ function createExplosion(x, y, color, count = 12) {
 }
 
 class Ball {
-    constructor(x, y, vx, vy, r, color, name, isLeft) {
+    constructor(x, y, vx, vy, r, color, name, isLeft, avatar) {
         this.x = x; this.y = y; this.vx = vx; this.vy = vy;
         this.r = r; this.color = color; this.name = name;
         this.isLeft = isLeft;
+        this.avatar = avatar; // '🐸' vai '🐯'
         this.maxHp = 10; this.hp = 10;
         this.weapon = WEAPONS.NONE;
         this.trail = [];
@@ -245,6 +246,7 @@ class Ball {
             ctx.restore();
         });
 
+        // Pamata bumbiņa
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
         ctx.fillStyle = this.hitTimer > 0 ? '#ffffff' : this.color;
@@ -253,29 +255,16 @@ class Ball {
         ctx.lineWidth = 2;
         ctx.stroke();
 
+        // Pepe un MrBeast sejas zīmēšana caur Emojīem centram
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.fillStyle = '#000000';
-        let lookX = Math.max(-5, Math.min(5, this.vx * 1.2));
-        let lookY = Math.max(-5, Math.min(5, this.vy * 0.4));
-
-        ctx.beginPath();
-        ctx.arc(-6 + lookX, -2 + lookY, 3, 0, Math.PI * 2);
-        ctx.arc(6 + lookX, -2 + lookY, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(-10 + lookX, -6 + lookY); ctx.lineTo(-2 + lookX, -2 + lookY);
-        ctx.moveTo(10 + lookX, -6 + lookY); ctx.lineTo(2 + lookX, -2 + lookY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(lookX, 6 + lookY, 4, Math.PI, 0, false);
-        ctx.stroke();
+        ctx.font = "26px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.avatar, 0, 0);
         ctx.restore();
 
+        // Ieroča ikona apkārt bumbiņai
         if (this.weapon && this.weapon.id !== 'NONE') {
             ctx.save();
             ctx.translate(this.x, this.y);
@@ -293,7 +282,7 @@ class Ball {
         this.hp -= amount;
         this.hitTimer = 6;
         triggerShake(6, 10);
-        createExplosion(this.x, this.y, '#ff3366', 12);
+        createExplosion(this.x, this.y, this.color, 12);
         updateUI();
         if (this.hp <= 0) handleGameOver(this);
     }
@@ -341,9 +330,10 @@ function init() {
     let startAngle2 = Math.random() * Math.PI * 2;
     let speed = 3.5;
 
+    // Zaļgans/Zils Pepe fonam un zilgansarkans MrBeast zīmoliem
     balls = [
-        new Ball(160, 275, Math.cos(startAngle1) * speed, Math.sin(startAngle1) * speed, 22, '#00d2ff', 'Pepe', true),
-        new Ball(390, 275, Math.cos(startAngle2) * speed, Math.sin(startAngle2) * speed, 22, '#ff3366', 'MrBeast', false)
+        new Ball(160, 275, Math.cos(startAngle1) * speed, Math.sin(startAngle1) * speed, 24, '#107c10', 'Pepe', true, '🐸'),
+        new Ball(390, 275, Math.cos(startAngle2) * speed, Math.sin(startAngle2) * speed, 24, '#00a4ef', 'MrBeast', false, '🐯')
     ];
     bullets = []; particles = []; activeItem = null; gameOver = false; laserBeam = null;
     document.getElementById('overlay').style.display = 'none';
