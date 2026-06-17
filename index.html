@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Bulletproof Edition</title>
+    <title>Bouncing Ball Duel - Unbreakable Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -186,17 +186,17 @@ class Ball {
     }
 
     update() {
-        this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > 10) this.trail.shift();
-
-        // Akmeņains drošības filtrs: Ja pozīcija vai ātrums sabojājas, uzreiz atgriežam bumbiņu drošībā
-        if (isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0) || isNaN(this.x) || isNaN(this.y)) {
+        // MAKSIMĀLĀ DROŠĪBAS BARJERA PRET PAZUŠANU:
+        if (isNaN(this.x) || isNaN(this.y) || isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0)) {
+            this.x = this.isLeft ? 160 : 390;
+            this.y = 275;
             let randAngle = Math.random() * Math.PI * 2;
             this.vx = Math.cos(randAngle) * 3.5;
             this.vy = Math.sin(randAngle) * 3.5;
-            this.x = this.isLeft ? 160 : 390;
-            this.y = 275;
         }
+
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > 10) this.trail.shift();
 
         this.x += this.vx; 
         this.y += this.vy;
@@ -207,6 +207,7 @@ class Ball {
         let dx = this.x - radius;
         let dy = this.y - radius;
         let dist = Math.sqrt(dx * dx + dy * dy);
+        dist = Math.max(0.1, dist); // Neļauj dalīt ar 0
 
         if (dist + this.r > radius) {
             let nx = dx / dist; 
@@ -232,7 +233,10 @@ class Ball {
     }
 
     draw(ctx) {
+        if (isNaN(this.x) || isNaN(this.y)) return; // Drošība zīmējot
+
         this.trail.forEach((t, i) => {
+            if(isNaN(t.x) || isNaN(t.y)) return;
             ctx.beginPath();
             ctx.arc(t.x, t.y, this.r * (i / this.trail.length), 0, Math.PI * 2);
             ctx.fillStyle = this.color;
@@ -273,7 +277,7 @@ class Ball {
         ctx.stroke();
         ctx.restore();
 
-        if (this.weapon.id !== 'NONE') {
+        if (this.weapon && this.weapon.id !== 'NONE') {
             ctx.save();
             ctx.translate(this.x, this.y);
             ctx.rotate(this.angle);
@@ -307,11 +311,12 @@ class Bullet {
             if (target) {
                 let dx = target.x - this.x; let dy = target.y - this.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist > 5) {
-                    this.vx += (dx / dist) * 0.35;
-                    this.vy += (dy / dist) * 0.35;
-                }
+                dist = Math.max(1, dist); // Droša distance nūjiņai
+                this.vx += (dx / dist) * 0.35;
+                this.vy += (dy / dist) * 0.35;
+                
                 let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                speed = Math.max(0.1, speed);
                 if (speed > 5.5) { this.vx = (this.vx/speed)*5.5; this.vy = (this.vy/speed)*5.5; }
             }
         }
@@ -319,6 +324,7 @@ class Bullet {
         this.life--;
     }
     draw(ctx) {
+        if(isNaN(this.x) || isNaN(this.y)) return;
         ctx.beginPath();
         if (this.type === 'MAGIC') {
             ctx.arc(this.x, this.y, 6.5, 0, Math.PI * 2);
@@ -364,6 +370,7 @@ function spawnArenaItem() {
 setInterval(spawnArenaItem, 2500);
 
 function updateUI() {
+    if(!balls[0] || !balls[1]) return;
     document.getElementById('blueHearts').innerText = '❤️'.repeat(Math.max(0, balls[0].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[0].hp));
     document.getElementById('redHearts').innerText = '❤️'.repeat(Math.max(0, balls[1].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[1].hp));
     document.getElementById('blueWeapon').innerText = balls[0].weapon.name;
@@ -381,8 +388,10 @@ function handleGameOver(loser) {
 
 function handleBallCollisions() {
     let b1 = balls[0]; let b2 = balls[1];
+    if(!b1 || !b2) return;
     let dx = b2.x - b1.x; let dy = b2.y - b1.y;
     let dist = Math.sqrt(dx*dx + dy*dy);
+    dist = Math.max(0.1, dist); // Drošība pret 0
 
     if (dist < b1.r + b2.r) {
         let nx = dx / dist; let ny = dy / dist;
@@ -412,7 +421,7 @@ function handleBallCollisions() {
     }
 }
 
-// STRĀDĀ PERFECT: Šaušanā tagad tiek izmantots pilnīgi drošs ieroča objekts (wp)
+// STRĀDĀ 100% DROŠI: Aprēķinos tagad ir aizsardzība pret bumbu pārklāšanos
 function shootWeapon(ball, wp) {
     let target = balls.find(b => b !== ball);
     if (!target || !wp) return;
@@ -423,7 +432,11 @@ function shootWeapon(ball, wp) {
         return;
     }
 
-    let baseAngle = Math.atan2(target.y - ball.y, target.x - ball.x);
+    let dx = target.x - ball.x;
+    let dy = target.y - ball.y;
+    if(dx === 0 && dy === 0) { dx = 1; dy = 1; } // Novērš NaN rašanos
+
+    let baseAngle = Math.atan2(dy, dx);
     for (let i = 0; i < wp.fireCount; i++) {
         let spread = (Math.random() - 0.5) * wp.spread;
         let finalAngle = baseAngle + spread;
@@ -494,7 +507,6 @@ function processGame() {
                     ball.hp = Math.min(ball.maxHp, ball.hp + 2);
                     createExplosion(ball.x, ball.y, '#39ff14', 8);
                 } else {
-                    // Paņemam šī konkrētā ieroča kopiju, lai to droši apstrādātu
                     let chosenWeapon = WEAPONS[activeItem.type];
                     ball.weapon = chosenWeapon;
                     shootWeapon(ball, chosenWeapon);
@@ -509,11 +521,13 @@ function processGame() {
     if (laserBeam && laserBeam.timer > 0) {
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(laserBeam.fromX, laserBeam.fromY);
-        ctx.lineTo(laserBeam.toX, laserBeam.toY);
-        ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = laserBeam.timer;
-        ctx.stroke();
+        if(!isNaN(laserBeam.fromX) && !isNaN(laserBeam.toX)) {
+            ctx.moveTo(laserBeam.fromX, laserBeam.fromY);
+            ctx.lineTo(laserBeam.toX, laserBeam.toY);
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = Math.max(1, laserBeam.timer);
+            ctx.stroke();
+        }
         ctx.restore();
         laserBeam.timer -= 1.5;
     }
@@ -528,21 +542,19 @@ function processGame() {
         bullet.update();
 
         balls.forEach(ball => {
-            if (ball !== bullet.owner) {
-                let dx = bullet.x - ball.x; let dy = bullet.y - ball.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < ball.r) {
-                    ball.takeDamage(bullet.dmg);
-                    bullets.splice(i, 1);
-                    return;
-                }
+            let dx = bullet.x - ball.x; let dy = bullet.y - ball.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < ball.r && bullet.owner !== ball) {
+                ball.takeDamage(bullet.dmg);
+                bullets.splice(i, 1);
+                return;
             }
         });
 
         if (bullets[i]) {
             bullet.draw(ctx);
             let adx = bullet.x - radius; let ady = bullet.y - radius;
-            if (Math.sqrt(adx*adx + ady*ady) > radius || bullet.life <= 0) {
+            if (Math.sqrt(adx*adx + ady*ady) > radius || bullet.life <= 0 || isNaN(bullet.x)) {
                 bullets.splice(i, 1);
             }
         }
@@ -550,7 +562,7 @@ function processGame() {
 
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
-        if (particles[i].life <= 0) {
+        if (particles[i].life <= 0 || isNaN(particles[i].x)) {
             particles.splice(i, 1);
         } else {
             particles[i].draw(ctx);
