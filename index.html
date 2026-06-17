@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Action Edition</title>
+    <title>Bouncing Ball Duel - Fixed Edition</title>
     <style>
         body {
             background-color: #05070f;
             color: #ffffff;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Roboto, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -95,12 +95,12 @@
         <div class="player-info blue-side">
             <span class="player-name">Steel Blue</span>
             <div id="blueHearts" class="hearts">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
-            <div><span id="blueWeapon" class="weapon-badge">DURKLIS</span></div>
+            <div><span id="blueWeapon" class="weapon-badge">BEZ IEROČA</span></div>
         </div>
         <div class="player-info red-side">
             <span class="player-name">Scarlet Red</span>
             <div id="redHearts" class="hearts">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
-            <div><span id="redWeapon" class="weapon-badge">DURKLIS</span></div>
+            <div><span id="redWeapon" class="weapon-badge">BEZ IEROČA</span></div>
         </div>
     </div>
 
@@ -126,10 +126,10 @@ let laserBeam = null;
 const WEAPONS = {
     NONE: { id: 'NONE', name: 'BEZ IEROČA', icon: '✊', type: 'MELEE', dmg: 1 },
     KNIFE: { id: 'KNIFE', name: 'ZOBENS', icon: '⚔️', type: 'MELEE', dmg: 2 },
-    PISTOL: { id: 'PISTOL', name: 'PISTOLE', icon: '🔫', type: 'RANGED', fireCount: 4, speed: 8, spread: 0.1, dmg: 1 },
-    SHOTGUN: { id: 'SHOTGUN', name: 'BISE', icon: '💥', type: 'RANGED', fireCount: 8, speed: 9, spread: 0.5, dmg: 1 },
-    LASER: { id: 'LASER', name: 'MEGA LĀZERS', icon: '⚡', type: 'LASER', dmg: 3 },
-    STAFF: { id: 'STAFF', name: 'NŪJIŅA', icon: '🔮', type: 'MAGIC', fireCount: 1, speed: 4.5, dmg: 3 }
+    PISTOL: { id: 'PISTOL', name: 'PISTOLE', icon: '🔫', type: 'RANGED', fireCount: 4, speed: 7, spread: 0.1, dmg: 1 },
+    SHOTGUN: { id: 'SHOTGUN', name: 'BISE', icon: '💥', type: 'RANGED', fireCount: 7, speed: 8, spread: 0.4, dmg: 1 },
+    LASER: { id: 'LASER', name: 'MEGA LĀZERS', icon: '⚡', type: 'LASER', dmg: 2 },
+    STAFF: { id: 'STAFF', name: 'NŪJIŅA', icon: '🔮', type: 'MAGIC', fireCount: 1, speed: 4, dmg: 3 }
 };
 
 const ITEMS = ['KNIFE', 'PISTOL', 'SHOTGUN', 'LASER', 'STAFF', 'APPLE'];
@@ -152,7 +152,7 @@ class Particle {
     }
     draw(ctx) {
         ctx.save();
-        ctx.globalAlpha = this.life / this.maxLife;
+        ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -161,14 +161,14 @@ class Particle {
     }
 }
 
-function createExplosion(x, y, color, count = 15) {
+function createExplosion(x, y, color, count = 12) {
     for (let i = 0; i < count; i++) {
         let angle = Math.random() * Math.PI * 2;
-        let speed = Math.random() * 5 + 2;
+        let speed = Math.random() * 4 + 1;
         particles.push(new Particle(
-            x, y, color, Math.random() * 4.5 + 1,
+            x, y, color, Math.random() * 3 + 1,
             Math.cos(angle) * speed, Math.sin(angle) * speed,
-            Math.random() * 25 + 15
+            Math.random() * 20 + 15
         ));
     }
 }
@@ -183,26 +183,23 @@ class Ball {
         this.trail = [];
         this.hitTimer = 0;
         this.angle = 0;
-        this.baseSpeed = 3.5;
     }
 
     update() {
+        // Saglabājam asti
         this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > 12) this.trail.shift();
+        if (this.trail.length > 10) this.trail.shift();
 
-        // Gravitācijas pievilkšana pret centru, ja tur stāv ierocis (Gravity Well)
-        if (activeItem) {
-            let cx = activeItem.x - this.x;
-            let cy = activeItem.y - this.y;
-            let cDist = Math.sqrt(cx*cx + cy*cy);
-            if (cDist > 10) {
-                this.vx += (cx / cDist) * 0.04;
-                this.vy += (cy / cDist) * 0.04;
-            }
+        // Drošības pārbaude pret pazušanu (ja ātrums kļūst par NaN vai 0)
+        if (isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0)) {
+            this.vx = (Math.random() - 0.5) * 4;
+            this.vy = (Math.random() - 0.5) * 4;
         }
 
-        this.x += this.vx; this.y += this.vy;
-        this.angle += (this.vx * 0.03);
+        // Kustība
+        this.x += this.vx; 
+        this.y += this.vy;
+        this.angle += (this.vx * 0.02);
 
         if (this.hitTimer > 0) this.hitTimer--;
 
@@ -212,80 +209,81 @@ class Ball {
         let dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist + this.r > radius) {
-            let nx = dx / dist; let ny = dy / dist;
+            let nx = dx / dist; 
+            let ny = dy / dist;
             let dot = this.vx * nx + this.vy * ny;
             
             this.vx -= 2 * dot * nx; 
             this.vy -= 2 * dot * ny;
             
-            // --- PAPILDINĀTS ĀTRUMS UN HAOSS ---
+            // Palielinām ātrumu un iedodam haosu, bet ierobežojam Max ātrumu līdz 8
             let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            speed = Math.min(speed * 1.03, 9); // Katrs atsitiens padara bumbiņu nedaudz ātrāku!
+            speed = Math.min(speed * 1.04, 8); 
+            if(speed < 2) speed = 3; // Drošības slieksnis, lai neapstājas
             
-            let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.5;
+            let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.4;
             this.vx = Math.cos(currentAngle) * speed;
             this.vy = Math.sin(currentAngle) * speed;
 
-            this.x = radius + nx * (radius - this.r - 2);
-            this.y = radius + ny * (radius - this.r - 2);
+            // Atbīdīšana atpakaļ arēnā, lai neiesprūst aiz malas
+            this.x = radius + nx * (radius - this.r - 3);
+            this.y = radius + ny * (radius - this.r - 3);
             
-            createExplosion(this.x + nx*this.r, this.y + ny*this.r, this.color, 4);
+            createExplosion(this.x + nx * this.r, this.y + ny * this.r, this.color, 3);
         }
     }
 
     draw(ctx) {
-        // Spīdoša aste
+        // Zīmē asti
         this.trail.forEach((t, i) => {
             ctx.beginPath();
             ctx.arc(t.x, t.y, this.r * (i / this.trail.length), 0, Math.PI * 2);
             ctx.fillStyle = this.color;
             ctx.save();
-            ctx.globalAlpha = (i / this.trail.length) * 0.25;
+            ctx.globalAlpha = (i / this.trail.length) * 0.2;
             ctx.fill();
             ctx.restore();
         });
 
+        // Ķermenis
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
         ctx.fillStyle = this.hitTimer > 0 ? '#ffffff' : this.color;
         ctx.fill();
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Dusmīgā seja
+        // Dusmīga seja
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.fillStyle = '#000000';
-        let lookX = this.vx * 1.2;
-        let lookY = this.vy * 0.4;
+        let lookX = Math.max(-5, Math.min(5, this.vx * 1.2));
+        let lookY = Math.max(-5, Math.min(5, this.vy * 0.4));
 
-        // Acis
         ctx.beginPath();
         ctx.arc(-6 + lookX, -2 + lookY, 3, 0, Math.PI * 2);
         ctx.arc(6 + lookX, -2 + lookY, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Dusmīgas uzacis
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(-10 + lookX, -7 + lookY); ctx.lineTo(-2 + lookX, -3 + lookY);
-        ctx.moveTo(10 + lookX, -7 + lookY); ctx.lineTo(2 + lookX, -3 + lookY);
+        ctx.moveTo(-10 + lookX, -6 + lookY); ctx.lineTo(-2 + lookX, -2 + lookY);
+        ctx.moveTo(10 + lookX, -6 + lookY); ctx.lineTo(2 + lookX, -2 + lookY);
         ctx.stroke();
 
-        // Mute
         ctx.beginPath();
         ctx.arc(lookX, 6 + lookY, 4, Math.PI, 0, false);
         ctx.stroke();
         ctx.restore();
 
-        // Ieroča ikona
+        // Ieroča ikona blakus bumbiņai
         if (this.weapon.id !== 'NONE') {
             ctx.save();
             ctx.translate(this.x, this.y);
             ctx.rotate(this.angle);
-            ctx.font = "22px Arial";
+            ctx.font = "20px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(this.weapon.icon, this.r + 12, 0);
@@ -296,8 +294,8 @@ class Ball {
     takeDamage(amount) {
         this.hp -= amount;
         this.hitTimer = 6;
-        triggerShake(7, 12);
-        createExplosion(this.x, this.y, '#ff1133', 15);
+        triggerShake(6, 10);
+        createExplosion(this.x, this.y, '#ff3366', 15);
         updateUI();
         if (this.hp <= 0) handleGameOver(this);
     }
@@ -307,7 +305,7 @@ class Bullet {
     constructor(x, y, vx, vy, owner, dmg, type) {
         this.x = x; this.y = y; this.vx = vx; this.vy = vy;
         this.owner = owner; this.dmg = dmg; this.type = type;
-        this.life = 150;
+        this.life = 120;
     }
     update() {
         if (this.type === 'MAGIC') {
@@ -315,10 +313,12 @@ class Bullet {
             if (target) {
                 let dx = target.x - this.x; let dy = target.y - this.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                this.vx += (dx / dist) * 0.35;
-                this.vy += (dy / dist) * 0.35;
+                if (dist > 5) {
+                    this.vx += (dx / dist) * 0.3;
+                    this.vy += (dy / dist) * 0.3;
+                }
                 let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-                if (speed > 6) { this.vx = (this.vx/speed)*6; this.vy = (this.vy/speed)*6; }
+                if (speed > 5.5) { this.vx = (this.vx/speed)*5.5; this.vy = (this.vy/speed)*5.5; }
             }
         }
         this.x += this.vx; this.y += this.vy;
@@ -327,7 +327,7 @@ class Bullet {
     draw(ctx) {
         ctx.beginPath();
         if (this.type === 'MAGIC') {
-            ctx.arc(this.x, this.y, 7, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, 6.5, 0, Math.PI * 2);
             ctx.fillStyle = '#bd00ff';
         } else {
             ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
@@ -340,7 +340,7 @@ class Bullet {
 function init() {
     let startAngle1 = Math.random() * Math.PI * 2;
     let startAngle2 = Math.random() * Math.PI * 2;
-    let speed = 4;
+    let speed = 3.5;
 
     balls = [
         new Ball(160, 275, Math.cos(startAngle1) * speed, Math.sin(startAngle1) * speed, 22, '#00d2ff', 'Steel Blue', true),
@@ -359,15 +359,16 @@ function triggerShake(intensity, duration) {
 function spawnArenaItem() {
     if (gameOver || activeItem) return;
     let type = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    // Izmet lietu tuvāk centram, lai bumbas tai viegli piekļūtu
     activeItem = {
-        x: radius + (Math.random() - 0.5) * 80,
-        y: radius + (Math.random() - 0.5) * 80,
+        x: radius + (Math.random() - 0.5) * 120,
+        y: radius + (Math.random() - 0.5) * 120,
         r: 18,
         type: type,
         pulse: 0
     };
 }
-setInterval(spawnArenaItem, 3000);
+setInterval(spawnArenaItem, 2500); // Ātrāka ieroču rašanās dinamikai
 
 function updateUI() {
     document.getElementById('blueHearts').innerText = '❤️'.repeat(Math.max(0, balls[0].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[0].hp));
@@ -398,8 +399,8 @@ function handleBallCollisions() {
         b1.vx -= p * nx; b1.vy -= p * ny;
         b2.vx += p * nx; b2.vy += p * ny;
 
-        // Katra sadursme iedod nejaušu grūdienu (Epic bounce)
-        let bounceChaos = (Math.random() - 0.5) * 0.8;
+        // Grūdiens haosam
+        let bounceChaos = (Math.random() - 0.5) * 0.5;
         b1.vx += bounceChaos; b1.vy -= bounceChaos;
         b2.vx -= bounceChaos; b2.vy += bounceChaos;
 
@@ -407,6 +408,7 @@ function handleBallCollisions() {
         b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
         b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
 
+        // Tuvcīņas ieroči pazūd pēc sitiena
         if (b1.weapon.type === 'MELEE') {
             b2.takeDamage(b1.weapon.dmg);
             b1.weapon = WEAPONS.NONE;
@@ -422,8 +424,9 @@ function handleBallCollisions() {
 function shootWeapon(ball, wp) {
     let target = balls.find(b => b !== ball);
     
+    // LABOTS: Lāzera loģika bez kļūdām
     if (wp.type === 'LASER') {
-        laserBeam = { fromX: ball.x, fromY: ball.y, toX: target.x, toY: target.y, timer: 20 };
+        laserBeam = { fromX: ball.x, fromY: ball.y, toX: target.x, toY: target.y, timer: 15 };
         target.takeDamage(wp.dmg);
         return;
     }
@@ -442,7 +445,7 @@ function shootWeapon(ball, wp) {
                 Math.sin(finalAngle) * wp.speed,
                 ball, wp.dmg, wp.type
             ));
-        }, i * 40);
+        }, i * 30);
     }
 }
 
@@ -461,29 +464,28 @@ function processGame() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Grid fons ar pulsāciju
+    // Arēnas režģis fonā
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.015)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < canvas.width; i += 20) {
+    for (let i = 0; i < canvas.width; i += 25) {
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
     }
 
-    // Aktīvā lieta ar "Gravity Well" vizuālo efektu
+    // Aktīvais ierocis ar vizuālo gredzenu
     if (activeItem) {
         activeItem.pulse += 0.08;
-        let pulseSize = Math.sin(activeItem.pulse) * 4;
+        let pulseSize = Math.sin(activeItem.pulse) * 3;
 
-        // Gravitācijas gredzens
         ctx.beginPath();
-        ctx.arc(activeItem.x, activeItem.y, activeItem.r + 15 + pulseSize, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.arc(activeItem.x, activeItem.y, activeItem.r + 10 + pulseSize, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
         ctx.lineWidth = 1;
         ctx.stroke();
 
         ctx.beginPath();
         ctx.arc(activeItem.x, activeItem.y, activeItem.r + pulseSize, 0, Math.PI * 2);
-        ctx.fillStyle = activeItem.type === 'APPLE' ? 'rgba(57, 255, 20, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+        ctx.fillStyle = activeItem.type === 'APPLE' ? 'rgba(57, 255, 20, 0.1)' : 'rgba(255, 255, 255, 0.08)';
         ctx.fill();
         ctx.strokeStyle = activeItem.type === 'APPLE' ? '#39ff14' : '#ffffff';
         ctx.lineWidth = 2;
@@ -495,18 +497,25 @@ function processGame() {
         let icon = activeItem.type === 'APPLE' ? '🍎' : WEAPONS[activeItem.type].icon;
         ctx.fillText(icon, activeItem.x, activeItem.y);
 
+        // Sadursme ar ieroci
         balls.forEach(ball => {
-            let idx = ball.x - activeItem.x; let idy = ball.y - activeItem.y;
+            let idx = ball.x - activeItem.x; 
+            let idy = ball.y - activeItem.y;
             let idist = Math.sqrt(idx*idx + idy*idy);
             
             if (idist < ball.r + activeItem.r) {
                 if (activeItem.type === 'APPLE') {
                     ball.hp = Math.min(ball.maxHp, ball.hp + 2);
-                    createExplosion(ball.x, ball.y, '#39ff14', 10);
+                    createExplosion(ball.x, ball.y, '#39ff14', 8);
                 } else {
                     ball.weapon = WEAPONS[activeItem.type];
                     shootWeapon(ball, ball.weapon);
-                    setTimeout(() => { ball.weapon = WEAPONS.NONE; updateUI(); }, 800);
+                    
+                    // Distances ieroči pēc šāviena uzreiz pāriet uz dūri
+                    setTimeout(() => { 
+                        ball.weapon = WEAPONS.NONE; 
+                        updateUI(); 
+                    }, 800);
                 }
                 activeItem = null;
                 updateUI();
@@ -514,7 +523,7 @@ function processGame() {
         });
     }
 
-    // Zīmē lāzeru, ja aktīvs
+    // Zīmē lāzera staru
     if (laserBeam && laserBeam.timer > 0) {
         ctx.save();
         ctx.beginPath();
@@ -522,17 +531,19 @@ function processGame() {
         ctx.lineTo(laserBeam.toX, laserBeam.toY);
         ctx.strokeStyle = '#ff0055';
         ctx.lineWidth = laserBeam.timer;
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = '#ff0055';
         ctx.stroke();
         ctx.restore();
-        laserBeam.timer -= 2;
+        laserBeam.timer -= 1.5;
     }
 
+    // Kustība un zīmēšana
     balls.forEach(b => b.update());
     handleBallCollisions();
     balls.forEach(b => b.draw(ctx));
 
+    // Ložu apstrāde
     for (let i = bullets.length - 1; i >= 0; i--) {
         let bullet = bullets[i];
         bullet.update();
@@ -558,6 +569,7 @@ function processGame() {
         }
     }
 
+    // Daļiņu efekti
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
         if (particles[i].life <= 0) {
