@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - 100% Stable Meme Edition</title>
+    <title>Bouncing Ball Duel - Bug Fixed Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -130,7 +130,7 @@ const WEAPONS = {
     SHOTGUN: { id: 'SHOTGUN', name: 'SHOTGUN', icon: '💥', type: 'RANGED', fireCount: 8, speed: 8, spread: 0.5, dmg: 1 },
     LASER: { id: 'LASER', name: 'MEGA LASER', icon: '⚡', type: 'LASER', dmg: 2 },
     STAFF: { id: 'STAFF', name: 'WAND', icon: '🔮', type: 'MAGIC', fireCount: 1, speed: 4, dmg: 3 },
-    BOW: { id: 'BOW', name: 'BOW & ARROW', icon: '🏹', type: 'RANGED', fireCount: 1, speed: 11, spread: 0, dmg: 2.5 },
+    BOW: { id: 'BOW', name: 'BOW & ARROW', icon: '🏹', type: 'RANGED', fireCount: 1, speed: 11, spread: 0.01, dmg: 2.5 },
     GRENADE: { id: 'GRENADE', name: 'GRENADE LAUNCHER', icon: '💣', type: 'GRENADE', dmg: 3 },
     FREEZE: { id: 'FREEZE', name: 'FREEZE RAY', icon: '❄️', type: 'FREEZE', dmg: 1 },
     GUITAR: { id: 'GUITAR', name: 'ROCK GUITAR', icon: '🎸', type: 'SPREAD_3', dmg: 1.5 },
@@ -193,7 +193,6 @@ class Ball {
     }
 
     update() {
-        // DROŠĪBAS PĀRBAUDE: ja koordinātas kļūst bojātas (NaN vai 0), tās nekavējoties tiek atjaunotas drošībā
         if (isNaN(this.x) || isNaN(this.y) || isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0)) {
             this.x = this.isLeft ? 160 : 390;
             this.y = 275;
@@ -232,7 +231,7 @@ class Ball {
             this.vy -= 2 * dot * ny;
             
             let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            speed = Math.min(speed * 1.04, 7.5); // Ātruma limits drošībai
+            speed = Math.min(speed * 1.04, 7.5); 
             if(speed < 2) speed = 3.5;
             
             let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.45;
@@ -327,8 +326,10 @@ class Bullet {
         if (this.type === 'GRENADE' && this.life === 1) {
             createExplosion(this.x, this.y, '#ffcc00', 20);
             let target = balls.find(b => b !== this.owner);
-            let tDist = Math.sqrt((target.x - this.x)**2 + (target.y - this.y)**2);
-            if (tDist < 80) target.takeDamage(2.5);
+            if (target) {
+                let tDist = Math.sqrt((target.x - this.x)**2 + (target.y - this.y)**2);
+                if (tDist < 80) target.takeDamage(2.5);
+            }
         }
 
         this.x += this.vx; this.y += this.vy;
@@ -388,8 +389,8 @@ setInterval(spawnArenaItem, 2300);
 function updateUI() {
     document.getElementById('blueHearts').innerText = '❤️'.repeat(Math.max(0, balls[0].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[0].hp));
     document.getElementById('redHearts').innerText = '❤️'.repeat(Math.max(0, balls[1].hp)) + '🖤'.repeat(Math.max(0, 10 - balls[1].hp));
-    document.getElementById('blueWeapon').innerText = balls[0].weapon.name;
-    document.getElementById('redWeapon').innerText = balls[1].weapon.name;
+    document.getElementById('blueWeapon').innerText = balls[0].weapon ? balls[0].weapon.name : 'UNARMED';
+    document.getElementById('redWeapon').innerText = balls[1].weapon ? balls[1].weapon.name : 'UNARMED';
 }
 
 function handleGameOver(loser) {
@@ -424,8 +425,8 @@ function handleBallCollisions() {
         b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
         b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
 
-        if (b1.weapon.type === 'MELEE') { b2.takeDamage(b1.weapon.dmg); b1.weapon = WEAPONS.NONE; }
-        if (b2.weapon.type === 'MELEE') { b1.takeDamage(b2.weapon.dmg); b2.weapon = WEAPONS.NONE; }
+        if (b1.weapon && b1.weapon.type === 'MELEE') { b2.takeDamage(b1.weapon.dmg); b1.weapon = WEAPONS.NONE; }
+        if (b2.weapon && b2.weapon.type === 'MELEE') { b1.takeDamage(b2.weapon.dmg); b2.weapon = WEAPONS.NONE; }
         updateUI();
     }
 }
@@ -444,6 +445,7 @@ function shootWeapon(ball, wp) {
     let dy = target.y - ball.y;
     if(dx === 0 && dy === 0) { dx = 1; dy = 1; }
     let baseAngle = Math.atan2(dy, dx);
+    if(isNaN(baseAngle)) baseAngle = 0;
 
     if (wp.type === 'SPREAD_3') {
         let angles = [baseAngle - 0.25, baseAngle, baseAngle + 0.25];
@@ -451,25 +453,23 @@ function shootWeapon(ball, wp) {
             bullets.push(new Bullet(ball.x + Math.cos(ang)*ball.r, ball.y + Math.sin(ang)*ball.r, Math.cos(ang)*6, Math.sin(ang)*6, ball, wp.dmg, 'RANGED'));
         });
     } else if (wp.type === 'RNG') {
-        let count = Math.floor(Math.random() * 6) + 2;
+        let count = Math.floor(Math.random() * 5) + 3;
         for(let i=0; i<count; i++) {
-            let randAng = baseAngle + (Math.random() - 0.5) * 0.6;
-            let randDmg = Math.random() * 1.5 + 0.5;
-            bullets.push(new Bullet(ball.x, ball.y, Math.cos(randAng)*7, Math.sin(randAng)*7, ball, randDmg, 'RANGED'));
+            let randAng = baseAngle + (Math.random() - 0.5) * 0.5;
+            let randDmg = Math.random() * 1.2 + 0.6;
+            bullets.push(new Bullet(ball.x + Math.cos(randAng)*ball.r, ball.y + Math.sin(randAng)*ball.r, Math.cos(randAng)*7, Math.sin(randAng)*7, ball, randDmg, 'RANGED'));
         }
     } else if (wp.type === 'GRENADE') {
-        bullets.push(new Bullet(ball.x, ball.y, Math.cos(baseAngle)*3.5, Math.sin(baseAngle)*3.5, ball, wp.dmg, 'GRENADE'));
+        bullets.push(new Bullet(ball.x + Math.cos(baseAngle)*ball.r, ball.y + Math.sin(baseAngle)*ball.r, Math.cos(baseAngle)*3.5, Math.sin(baseAngle)*3.5, ball, wp.dmg, 'GRENADE'));
     } else if (wp.type === 'FREEZE') {
-        bullets.push(new Bullet(ball.x, ball.y, Math.cos(baseAngle)*6.5, Math.sin(baseAngle)*6.5, ball, wp.dmg, 'FREEZE'));
+        bullets.push(new Bullet(ball.x + Math.cos(baseAngle)*ball.r, ball.y + Math.sin(baseAngle)*ball.r, Math.cos(baseAngle)*6.5, Math.sin(baseAngle)*6.5, ball, wp.dmg, 'FREEZE'));
     } else {
         let currentSpread = wp.spread || 0;
-        for (let i = 0; i < (wp.fireCount || 1); i++) {
+        let fCount = wp.fireCount || 1;
+        for (let i = 0; i < fCount; i++) {
             let spreadOffset = currentSpread > 0 ? (Math.random() - 0.5) * currentSpread : 0;
             let finalAngle = baseAngle + spreadOffset;
             
-            // DROŠĪBAS PĀRBAUDE: ja leņķis kļūst kļūdains, to izlabo
-            if(isNaN(finalAngle)) finalAngle = baseAngle;
-
             bullets.push(new Bullet(
                 ball.x + Math.cos(finalAngle) * ball.r,
                 ball.y + Math.sin(finalAngle) * ball.r,
@@ -501,6 +501,7 @@ function processGame() {
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
     }
 
+    // LABOTS: Pilnībā droša ieroču paņemšanas un tūlītējas izšaušanas loģika bez crash iespējamības
     if (activeItem && !gameOver) {
         activeItem.pulse += 0.08;
         let pulseSize = Math.sin(activeItem.pulse) * 3;
@@ -525,7 +526,8 @@ function processGame() {
         let icon = activeItem.type === 'APPLE' ? '🍎' : WEAPONS[activeItem.type].icon;
         ctx.fillText(icon, activeItem.x, activeItem.y);
 
-        balls.forEach(ball => {
+        for (let i = 0; i < balls.length; i++) {
+            let ball = balls[i];
             let idx = ball.x - activeItem.x; 
             let idy = ball.y - activeItem.y;
             let idist = Math.sqrt(idx*idx + idy*idy);
@@ -538,12 +540,13 @@ function processGame() {
                     let chosenWeapon = WEAPONS[activeItem.type];
                     ball.weapon = chosenWeapon;
                     shootWeapon(ball, chosenWeapon);
-                    ball.weapon = WEAPONS.NONE;
+                    ball.weapon = WEAPONS.NONE; // Atgriežam statusu tikai pēc veiksmīga šāviena procesa beigām
                 }
                 activeItem = null;
                 updateUI();
+                break;
             }
-        });
+        }
     }
 
     if (laserBeam && laserBeam.timer > 0) {
