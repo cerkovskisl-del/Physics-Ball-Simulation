@@ -56,6 +56,214 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const radius = canvas.width / 2;
 
+let gameOver = false;
+
+let balls = [
+    { x: 150, y: 225, vx: 2.5, vy: 2, r: 18, color: '#41a7fc', hp: 5, weapon: null },
+    { x: 300, y: 225, vx: -2.5, vy: -2, r: 18, color: '#ff4b4b', hp: 5, weapon: null }
+];
+
+let bullets = [];
+let itemInArena = null; 
+const itemTypes = ['GUN', 'KNIFE', 'APPLE'];
+
+function spawnItem() {
+    if (gameOver || itemInArena) return;
+    const type = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+    itemInArena = { x: radius, y: radius, r: 14, type: type };
+}
+setInterval(spawnItem, 4000);
+
+function updateUI() {
+    document.getElementById('blueHearts').innerText = '❤️'.repeat(Math.max(0, balls[0].hp)) + '🖤'.repeat(Math.max(0, 5 - balls[0].hp));
+    document.getElementById('redHearts').innerText = '❤️'.repeat(Math.max(0, balls[1].hp)) + '🖤'.repeat(Math.max(0, 5 - balls[1].hp));
+}
+
+function checkGameOver() {
+    if (balls[0].hp <= 0 && !gameOver) {
+        gameOver = true;
+        alert("Sarkanais (Scarlet Red) Uzvarēja!");
+    } else if (balls[1].hp <= 0 && !gameOver) {
+        gameOver = true;
+        alert("Zilais (Steel Blue) Uzvarēja!");
+    }
+}
+
+function update() {
+    if (gameOver) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Režģis
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=30) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+    }
+
+    // Centra ierocis
+    if (itemInArena) {
+        ctx.beginPath();
+        ctx.arc(itemInArena.x, itemInArena.y, itemInArena.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        let icon = itemInArena.type === 'GUN' ? '🔫' : itemInArena.type === 'KNIFE' ? '🔪' : '🍎';
+        ctx.fillText(icon, itemInArena.x, itemInArena.y);
+    }
+
+    // Bumbiņu kustība un zīmēšana
+    balls.forEach(ball => {
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Sadursme ar arēnas malu
+        let dx = ball.x - radius;
+        let dy = ball.y - radius;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist + ball.r > radius) {
+            let nx = dx / dist;
+            let ny = dy / dist;
+            let dot = ball.vx * nx + ball.vy * ny;
+            ball.vx -= 2 * dot * nx;
+            ball.vy -= 2 * dot * ny;
+            ball.x = radius + nx * (radius - ball.r - 1);
+            ball.y = radius + ny * (radius - ball.r - 1);
+        }
+
+        // Lietu paņemšana
+        if (itemInArena) {
+            let idx = ball.x - itemInArena.x;
+            let idy = ball.y - itemInArena.y;
+            let idist = Math.sqrt(idx * idx + idy * idy);
+            if (idist < ball.r + itemInArena.r) {
+                if (itemInArena.type === 'APPLE') {
+                    ball.hp = Math.min(5, ball.hp + 1);
+                } else {
+                    ball.weapon = itemInArena.type;
+                    if (ball.weapon === 'GUN') {
+                        let target = ball === balls[0] ? balls[1] : balls[0];
+                        let angle = Math.atan2(target.y - ball.y, target.x - ball.x);
+                        bullets.push({ x: ball.x, y: ball.y, vx: Math.cos(angle)*6, vy: Math.sin(angle)*6, owner: ball });
+                        bullets.push({ x: ball.x, y: ball.y, vx: Math.cos(angle+0.2)*6, vy: Math.sin(angle+0.2)*6, owner: ball });
+                    }
+                }
+                itemInArena = null;
+                updateUI();
+            }
+        }
+
+        // Zīmē bumbiņu
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+        ctx.closePath();
+
+        // Sejiņa
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(ball.x - 5, ball.y - 4, 2, 0, Math.PI * 2);
+        ctx.arc(ball.x + 5, ball.y - 4, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y + 3, 4, 0, Math.PI, false);
+        ctx.stroke();
+
+        if (ball.weapon) {
+            ctx.fillStyle = '#fff';
+            ctx.font = "14px Arial";
+            ctx.fillText(ball.weapon === 'GUN' ? '🔫' : '🔪', ball.x + 12, ball.y - 12);
+        }
+    });
+
+    // Savstarpējā bumbiņu sadursme
+    let bDx = balls[0].x - balls[1].x;
+    let bDy = balls[0].y - balls[1].y;
+    let bDist = Math.sqrt(bDx * bDx + bDy * bDy);
+
+    if (bDist < balls[0].r + balls[1].r) {
+        if (balls[0].weapon === 'KNIFE') { balls[1].hp--; balls[0].weapon = null; }
+        if (balls[1].weapon === 'KNIFE') { balls[0].hp--; balls[1].weapon = null; }
+
+        let tempVx = balls[0].vx; let tempVy = balls[0].vy;
+        balls[0].vx = balls[1].vx; balls[0].vy = balls[1].vy;
+        balls[1].vx = tempVx; balls[1].vy = tempVy;
+
+        updateUI();
+        checkGameOver();
+    }
+
+    // Lodes
+    bullets.forEach((bullet, bIndex) => {
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
+
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffcc00';
+        ctx.fill();
+
+        balls.forEach(ball => {
+            if (ball !== bullet.owner) {
+                let tDx = bullet.x - ball.x;
+                let tDy = bullet.y - ball.y;
+                let tDist = Math.sqrt(tDx * tDx + tDy * tDy);
+
+                if (tDist < ball.r) {
+                    ball.hp--;
+                    bullets.splice(bIndex, 1);
+                    updateUI();
+                    checkGameOver();
+                }
+            }
+        });
+
+        let aDx = bullet.x - radius;
+        let aDy = bullet.y - radius;
+        if (Math.sqrt(aDx * aDx + aDy * aDy) > radius) {
+            bullets.splice(bIndex, 1);
+        }
+    });
+
+    requestAnimationFrame(update);
+}
+
+updateUI();
+update();
+</script>
+
+</body>
+</html>    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="blue-side">
+        Steel Blue<br>
+        <div id="blueHearts" class="hearts">❤️❤️❤️❤️❤️</div>
+    </div>
+    <div class="red-side">
+        Scarlet Red<br>
+        <div id="redHearts" class="hearts">❤️❤️❤️❤️❤️</div>
+    </div>
+</div>
+
+<canvas id="gameCanvas" width="450" height="450"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const radius = canvas.width / 2;
+
 // Spēles stāvoklis
 let gameOver = false;
 
