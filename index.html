@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - 10 Weapons Edition</title>
+    <title>Bouncing Ball Duel - 100% Stable Meme Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -130,8 +130,7 @@ const WEAPONS = {
     SHOTGUN: { id: 'SHOTGUN', name: 'SHOTGUN', icon: '💥', type: 'RANGED', fireCount: 8, speed: 8, spread: 0.5, dmg: 1 },
     LASER: { id: 'LASER', name: 'MEGA LASER', icon: '⚡', type: 'LASER', dmg: 2 },
     STAFF: { id: 'STAFF', name: 'WAND', icon: '🔮', type: 'MAGIC', fireCount: 1, speed: 4, dmg: 3 },
-    // JAUNIE IEROČI:
-    BOW: { id: 'BOW', name: 'BOW & ARROW', icon: '🏹', type: 'RANGED', fireCount: 1, speed: 12, spread: 0, dmg: 2.5 },
+    BOW: { id: 'BOW', name: 'BOW & ARROW', icon: '🏹', type: 'RANGED', fireCount: 1, speed: 11, spread: 0, dmg: 2.5 },
     GRENADE: { id: 'GRENADE', name: 'GRENADE LAUNCHER', icon: '💣', type: 'GRENADE', dmg: 3 },
     FREEZE: { id: 'FREEZE', name: 'FREEZE RAY', icon: '❄️', type: 'FREEZE', dmg: 1 },
     GUITAR: { id: 'GUITAR', name: 'ROCK GUITAR', icon: '🎸', type: 'SPREAD_3', dmg: 1.5 },
@@ -190,10 +189,11 @@ class Ball {
         this.trail = [];
         this.hitTimer = 0;
         this.angle = 0;
-        this.freezeTimer = 0; // Iesaldēšanas mehānika
+        this.freezeTimer = 0;
     }
 
     update() {
+        // DROŠĪBAS PĀRBAUDE: ja koordinātas kļūst bojātas (NaN vai 0), tās nekavējoties tiek atjaunotas drošībā
         if (isNaN(this.x) || isNaN(this.y) || isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0)) {
             this.x = this.isLeft ? 160 : 390;
             this.y = 275;
@@ -206,7 +206,7 @@ class Ball {
 
         if (this.freezeTimer > 0) {
             this.freezeTimer--;
-            return; // Ja iesaldēts, nekustas un neaprēķina fiziku
+            return;
         }
 
         this.trail.push({ x: this.x, y: this.y });
@@ -232,7 +232,7 @@ class Ball {
             this.vy -= 2 * dot * ny;
             
             let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            speed = Math.min(speed * 1.04, 7.5); 
+            speed = Math.min(speed * 1.04, 7.5); // Ātruma limits drošībai
             if(speed < 2) speed = 3.5;
             
             let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.45;
@@ -261,7 +261,6 @@ class Ball {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
         
-        // Ja iesaldēts, nokrāsojas zilgans
         if (this.freezeTimer > 0) {
             ctx.fillStyle = '#a0e0ff';
         } else {
@@ -325,12 +324,11 @@ class Bullet {
             }
         }
         
-        // Granātas sprādziena loģika, kad beidzas dzīvība
         if (this.type === 'GRENADE' && this.life === 1) {
             createExplosion(this.x, this.y, '#ffcc00', 20);
             let target = balls.find(b => b !== this.owner);
             let tDist = Math.sqrt((target.x - this.x)**2 + (target.y - this.y)**2);
-            if (tDist < 80) target.takeDamage(2.5); // Sprādziena rādiusa bojājums
+            if (tDist < 80) target.takeDamage(2.5);
         }
 
         this.x += this.vx; this.y += this.vy;
@@ -448,13 +446,11 @@ function shootWeapon(ball, wp) {
     let baseAngle = Math.atan2(dy, dx);
 
     if (wp.type === 'SPREAD_3') {
-        // Ģitāras 3 viļņu šāviens
         let angles = [baseAngle - 0.25, baseAngle, baseAngle + 0.25];
         angles.forEach(ang => {
             bullets.push(new Bullet(ball.x + Math.cos(ang)*ball.r, ball.y + Math.sin(ang)*ball.r, Math.cos(ang)*6, Math.sin(ang)*6, ball, wp.dmg, 'RANGED'));
         });
     } else if (wp.type === 'RNG') {
-        // RNG Cannon: nejaušas 2 līdz 7 lodes
         let count = Math.floor(Math.random() * 6) + 2;
         for(let i=0; i<count; i++) {
             let randAng = baseAngle + (Math.random() - 0.5) * 0.6;
@@ -462,15 +458,18 @@ function shootWeapon(ball, wp) {
             bullets.push(new Bullet(ball.x, ball.y, Math.cos(randAng)*7, Math.sin(randAng)*7, ball, randDmg, 'RANGED'));
         }
     } else if (wp.type === 'GRENADE') {
-        // Lēna granāta, kas lido līdz centram un uzsprāgst pēc laika
         bullets.push(new Bullet(ball.x, ball.y, Math.cos(baseAngle)*3.5, Math.sin(baseAngle)*3.5, ball, wp.dmg, 'GRENADE'));
     } else if (wp.type === 'FREEZE') {
         bullets.push(new Bullet(ball.x, ball.y, Math.cos(baseAngle)*6.5, Math.sin(baseAngle)*6.5, ball, wp.dmg, 'FREEZE'));
     } else {
-        // Standarta šaušanas loģika (Pistol, Shotgun, Bow, Wand)
+        let currentSpread = wp.spread || 0;
         for (let i = 0; i < (wp.fireCount || 1); i++) {
-            let spread = (Math.random() - 0.5) * (wp.spread || 0);
-            let finalAngle = baseAngle + spread;
+            let spreadOffset = currentSpread > 0 ? (Math.random() - 0.5) * currentSpread : 0;
+            let finalAngle = baseAngle + spreadOffset;
+            
+            // DROŠĪBAS PĀRBAUDE: ja leņķis kļūst kļūdains, to izlabo
+            if(isNaN(finalAngle)) finalAngle = baseAngle;
+
             bullets.push(new Bullet(
                 ball.x + Math.cos(finalAngle) * ball.r,
                 ball.y + Math.sin(finalAngle) * ball.r,
@@ -575,7 +574,6 @@ function processGame() {
                 if (dist < ball.r && bullet.owner !== ball) {
                     ball.takeDamage(bullet.dmg);
                     
-                    // Ja trāpa Freeze lode, iesaldē pretinieku uz 90 kadriem (~1.5 sekundēm)
                     if (bullet.type === 'FREEZE') {
                         ball.freezeTimer = 90;
                     }
