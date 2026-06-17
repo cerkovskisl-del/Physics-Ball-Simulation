@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="lv">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Immortal Physics Edition</title>
+    <title>Bouncing Ball Duel - Meme Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -93,22 +93,22 @@
 <div id="game-container">
     <div id="ui">
         <div class="player-info blue-side">
-            <span class="player-name">Steel Blue</span>
+            <span class="player-name">Pepe</span>
             <div id="blueHearts" class="hearts">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
-            <div><span id="blueWeapon" class="weapon-badge">BEZ IEROČA</span></div>
+            <div><span id="blueWeapon" class="weapon-badge">UNARMED</span></div>
         </div>
         <div class="player-info red-side">
-            <span class="player-name">Scarlet Red</span>
+            <span class="player-name">MrBeast</span>
             <div id="redHearts" class="hearts">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
-            <div><span id="redWeapon" class="weapon-badge">BEZ IEROČA</span></div>
+            <div><span id="redWeapon" class="weapon-badge">UNARMED</span></div>
         </div>
     </div>
 
     <div style="position: relative;">
         <canvas id="gameCanvas" width="550" height="550"></canvas>
         <div id="overlay">
-            <div id="winnerText">ZILAIS UZVARĒJA!</div>
-            <button onclick="resetGame()">CĪNĪTIES ATKAL</button>
+            <div id="winnerText">PEPE WINS!</div>
+            <button onclick="resetGame()">REMATCH</button>
         </div>
     </div>
 </div>
@@ -124,12 +124,12 @@ let screenShakeIntensity = 0;
 let laserBeam = null;
 
 const WEAPONS = {
-    NONE: { id: 'NONE', name: 'BEZ IEROČA', icon: '✊', type: 'MELEE', dmg: 1 },
-    KNIFE: { id: 'KNIFE', name: 'ZOBENS', icon: '⚔️', type: 'MELEE', dmg: 2 },
-    PISTOL: { id: 'PISTOL', name: 'PISTOLE', icon: '🔫', type: 'RANGED', fireCount: 3, speed: 7, spread: 0.1, dmg: 1 },
-    SHOTGUN: { id: 'SHOTGUN', name: 'BISE', icon: '💥', type: 'RANGED', fireCount: 8, speed: 8, spread: 0.5, dmg: 1 },
-    LASER: { id: 'LASER', name: 'MEGA LĀZERS', icon: '⚡', type: 'LASER', dmg: 2 },
-    STAFF: { id: 'STAFF', name: 'NŪJIŅA', icon: '🔮', type: 'MAGIC', fireCount: 1, speed: 4, dmg: 3 }
+    NONE: { id: 'NONE', name: 'UNARMED', icon: '✊', type: 'MELEE', dmg: 1 },
+    KNIFE: { id: 'KNIFE', name: 'SWORD', icon: '⚔️', type: 'MELEE', dmg: 2 },
+    PISTOL: { id: 'PISTOL', name: 'PISTOL', icon: '🔫', type: 'RANGED', fireCount: 3, speed: 7, spread: 0.1, dmg: 1 },
+    SHOTGUN: { id: 'SHOTGUN', name: 'SHOTGUN', icon: '💥', type: 'RANGED', fireCount: 8, speed: 8, spread: 0.5, dmg: 1 },
+    LASER: { id: 'LASER', name: 'MEGA LASER', icon: '⚡', type: 'LASER', dmg: 2 },
+    STAFF: { id: 'STAFF', name: 'WAND', icon: '🔮', type: 'MAGIC', fireCount: 1, speed: 4, dmg: 3 }
 };
 
 const ITEMS = ['KNIFE', 'PISTOL', 'SHOTGUN', 'LASER', 'STAFF', 'APPLE'];
@@ -186,7 +186,6 @@ class Ball {
     }
 
     update() {
-        // JA NOTIEK KĻŪDA, AUTOMĀTISKI TELEPORTĒ ATPAKAĻ (Bumbas vairs nekad nepazudīs)
         if (isNaN(this.x) || isNaN(this.y) || isNaN(this.vx) || isNaN(this.vy) || (this.vx === 0 && this.vy === 0)) {
             this.x = this.isLeft ? 160 : 390;
             this.y = 275;
@@ -195,7 +194,7 @@ class Ball {
             this.vy = Math.sin(randAngle) * 3.5;
         }
 
-        if (gameOver) return; // Ja spēle beigusies, apstādinām kustību, bet turpinām zīmēt!
+        if (gameOver) return;
 
         this.trail.push({ x: this.x, y: this.y });
         if (this.trail.length > 10) this.trail.shift();
@@ -343,8 +342,8 @@ function init() {
     let speed = 3.5;
 
     balls = [
-        new Ball(160, 275, Math.cos(startAngle1) * speed, Math.sin(startAngle1) * speed, 22, '#00d2ff', 'Steel Blue', true),
-        new Ball(390, 275, Math.cos(startAngle2) * speed, Math.sin(startAngle2) * speed, 22, '#ff3366', 'Scarlet Red', false)
+        new Ball(160, 275, Math.cos(startAngle1) * speed, Math.sin(startAngle1) * speed, 22, '#00d2ff', 'Pepe', true),
+        new Ball(390, 275, Math.cos(startAngle2) * speed, Math.sin(startAngle2) * speed, 22, '#ff3366', 'MrBeast', false)
     ];
     bullets = []; particles = []; activeItem = null; gameOver = false; laserBeam = null;
     document.getElementById('overlay').style.display = 'none';
@@ -380,7 +379,7 @@ function handleGameOver(loser) {
     gameOver = true;
     let winner = balls.find(b => b !== loser);
     let txt = document.getElementById('winnerText');
-    txt.innerText = `${winner.name} UZVARĒJA!`;
+    txt.innerText = `${winner.name.toUpperCase()} WINS!`;
     txt.style.color = winner.color;
     document.getElementById('overlay').style.display = 'flex';
 }
@@ -444,7 +443,6 @@ function shootWeapon(ball, wp) {
 }
 
 function processGame() {
-    // SVARĪGI: Spēles cikls vairs nekad neapstājas (RequestAnimationFrame griežas vienmēr)
     let translateX = 0; let translateY = 0;
     if (screenShakeTimer > 0) {
         translateX = (Math.random() - 0.5) * screenShakeIntensity;
@@ -457,7 +455,6 @@ function processGame() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fona režģis
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.015)';
     ctx.lineWidth = 1;
     for (let i = 0; i < canvas.width; i += 25) {
@@ -465,7 +462,6 @@ function processGame() {
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
     }
 
-    // Lietu rašanās loģika (Tikai ja spēle aktīva)
     if (activeItem && !gameOver) {
         activeItem.pulse += 0.08;
         let pulseSize = Math.sin(activeItem.pulse) * 3;
@@ -527,7 +523,6 @@ function processGame() {
     handleBallCollisions();
     balls.forEach(b => b.draw(ctx));
 
-    // Ložu atjaunināšana
     if (!gameOver) {
         for (let i = bullets.length - 1; i >= 0; i--) {
             let bullet = bullets[i];
@@ -554,7 +549,6 @@ function processGame() {
         }
     }
 
-    // Daļiņas
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
         if (particles[i].life <= 0) {
