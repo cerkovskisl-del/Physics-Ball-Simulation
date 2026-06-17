@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Speed Damage Edition</title>
+    <title>Bouncing Ball Duel - Random Spawn Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -231,7 +231,7 @@ class Ball {
             this.vy -= 2 * dot * ny;
             
             let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            speed = Math.min(speed * 1.05, 7.5); // Pieaugums atsitienā
+            speed = Math.min(speed * 1.05, 7.5); 
             if(speed < 2) speed = 3.5;
             
             let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.45;
@@ -373,12 +373,19 @@ function triggerShake(intensity, duration) {
     screenShakeTimer = duration;
 }
 
+// UZLABOTS: Tagad ieroči un āboli rodas pilnīgi random vietās visā apļa arēnā!
 function spawnArenaItem() {
     if (gameOver || activeItem) return;
     let type = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    
+    // Izvēlamies nejaušu leņķi (0 līdz 360 grādi)
+    let randomAngle = Math.random() * Math.PI * 2;
+    // Izvēlamies nejaušu attālumu no centra (drošības robežās līdz 190 pikseļiem, lai neuzrastos sienā)
+    let randomDistance = Math.random() * 190;
+
     activeItem = {
-        x: radius + (Math.random() - 0.5) * 140,
-        y: radius + (Math.random() - 0.5) * 140,
+        x: radius + Math.cos(randomAngle) * randomDistance,
+        y: radius + Math.sin(randomAngle) * randomDistance,
         r: 18,
         type: type,
         pulse: 0
@@ -402,7 +409,6 @@ function handleGameOver(loser) {
     document.getElementById('overlay').style.display = 'flex';
 }
 
-// JAUNĀ MEHĀNIKA: Sadursmju loģika, kur damage saņem tas, kuram mazāks ātrums!
 function handleBallCollisions() {
     if (gameOver) return;
     let b1 = balls[0]; let b2 = balls[1];
@@ -411,11 +417,9 @@ function handleBallCollisions() {
     dist = Math.max(0.1, dist);
 
     if (dist < b1.r + b2.r) {
-        // Izrēķinām abu bumbiņu pašreizējo ātrumu
         let speed1 = Math.sqrt(b1.vx * b1.vx + b1.vy * b1.vy);
         let speed2 = Math.sqrt(b2.vx * b2.vx + b2.vy * b2.vy);
 
-        // Standarta elastīgā bumbiņu atsišanās matemātika
         let nx = dx / dist; let ny = dy / dist;
         let kx = b1.vx - b2.vx; let ky = b1.vy - b2.vy;
         let p = 2 * (nx * kx + ny * ky) / 2;
@@ -431,14 +435,11 @@ function handleBallCollisions() {
         b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
         b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
 
-        // KUSTĪBAS DAMAGE APSTRĀDE: Kurai ātrums bija mazāks, tā dabū pa mizu!
         if (speed1 > speed2) {
-            // b1 ietriecas un nodara bojājumus b2
             let damage = (b1.weapon && b1.weapon.type === 'MELEE') ? b1.weapon.dmg : 1;
             b2.takeDamage(damage);
             if (b1.weapon.type === 'MELEE') b1.weapon = WEAPONS.NONE;
         } else if (speed2 > speed1) {
-            // b2 ietriecas un nodara bojājumus b1
             let damage = (b2.weapon && b2.weapon.type === 'MELEE') ? b2.weapon.dmg : 1;
             b1.takeDamage(damage);
             if (b2.weapon.type === 'MELEE') b2.weapon = WEAPONS.NONE;
