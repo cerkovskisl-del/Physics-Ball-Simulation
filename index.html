@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball Duel - Random Spawn Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bouncing Ball Duel - Mobile Touch Edition</title>
     <style>
         body {
             background-color: #05070f;
@@ -17,44 +17,52 @@
             margin: 0;
             overflow: hidden;
             user-select: none;
+            touch-action: none; /* Neļauj telefonam pietuvināt ekrānu, kad ātri kliko */
         }
         #game-container {
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
+            max-width: 550px;
+            padding: 10px;
+            box-sizing: border-box;
         }
         #ui {
             display: flex;
             justify-content: space-between;
-            width: 520px;
+            width: 100%;
             margin-bottom: 15px;
             background: linear-gradient(135deg, rgba(20, 24, 46, 0.8) 0%, rgba(10, 12, 26, 0.8) 100%);
-            padding: 15px 25px;
+            padding: 10px 20px;
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
         }
         .player-info { display: flex; flex-direction: column; }
         .blue-side { color: #00d2ff; text-align: left; }
         .red-side { color: #ff3366; text-align: right; }
-        .player-name { font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; }
-        .hearts { font-size: 24px; margin-top: 5px; letter-spacing: 1px; }
+        .player-name { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+        .hearts { font-size: 18px; margin-top: 5px; letter-spacing: 0.5px; }
         .weapon-badge {
-            font-size: 12px;
+            font-size: 11px;
             background: rgba(255, 255, 255, 0.07);
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 12px;
-            margin-top: 8px;
+            margin-top: 6px;
             display: inline-block;
             letter-spacing: 1px;
             font-weight: bold;
         }
         canvas {
             background: radial-gradient(circle, #0f1326 0%, #050710 100%);
-            border: 6px solid #ffffff;
+            border: 5px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
+            max-width: 100%;
+            height: auto;
         }
         #overlay {
             position: absolute;
@@ -68,7 +76,7 @@
             z-index: 10;
         }
         #winnerText {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 900;
             margin-bottom: 20px;
             letter-spacing: 2px;
@@ -85,7 +93,6 @@
             box-shadow: 0 5px 15px rgba(0, 210, 255, 0.4);
             transition: all 0.2s ease;
         }
-        button:hover { transform: scale(1.1); box-shadow: 0 8px 25px rgba(0, 210, 255, 0.6); }
     </style>
 </head>
 <body>
@@ -104,7 +111,7 @@
         </div>
     </div>
 
-    <div style="position: relative;">
+    <div style="position: relative; width: 100%; display: flex; justify-content: center;">
         <canvas id="gameCanvas" width="550" height="550"></canvas>
         <div id="overlay">
             <div id="winnerText">PEPE WINS!</div>
@@ -231,7 +238,7 @@ class Ball {
             this.vy -= 2 * dot * ny;
             
             let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            speed = Math.min(speed * 1.05, 7.5); 
+            speed = Math.min(speed * 1.05, 8.5); // Nedaudz palielināts max ātrums telefonam
             if(speed < 2) speed = 3.5;
             
             let currentAngle = Math.atan2(this.vy, this.vx) + (Math.random() - 0.5) * 0.45;
@@ -373,14 +380,11 @@ function triggerShake(intensity, duration) {
     screenShakeTimer = duration;
 }
 
-// UZLABOTS: Tagad ieroči un āboli rodas pilnīgi random vietās visā apļa arēnā!
 function spawnArenaItem() {
     if (gameOver || activeItem) return;
     let type = ITEMS[Math.floor(Math.random() * ITEMS.length)];
     
-    // Izvēlamies nejaušu leņķi (0 līdz 360 grādi)
     let randomAngle = Math.random() * Math.PI * 2;
-    // Izvēlamies nejaušu attālumu no centra (drošības robežās līdz 190 pikseļiem, lai neuzrastos sienā)
     let randomDistance = Math.random() * 190;
 
     activeItem = {
@@ -498,6 +502,31 @@ function shootWeapon(ball, wp) {
         }
     }
 }
+
+// JAUNĀ TELEFONA SKĀRIENVADĪBA (Touch controls)
+window.addEventListener('touchstart', (e) => {
+    if (gameOver) return;
+    
+    // Izskatām visus pirkstu pieskārienus (atbalsta vairākus pirkstus vienlaicīgi)
+    for (let i = 0; i < e.touches.length; i++) {
+        let touch = e.touches[i];
+        
+        // Ja pieskaras ekrāna kreisajā pusē -> Paātrina Pepe (Zilo)
+        if (touch.clientX < window.innerWidth / 2) {
+            let currentSpeed = Math.sqrt(balls[0].vx ** 2 + balls[0].vy ** 2);
+            balls[0].vx = (balls[0].vx / currentSpeed) * (currentSpeed + 1.5);
+            balls[0].vy = (balls[0].vy / currentSpeed) * (currentSpeed + 1.5);
+            createExplosion(balls[0].x, balls[0].y, '#00d2ff', 4);
+        } 
+        // Ja pieskaras ekrāna labajā pusē -> Paātrina MrBeast (Sarkano)
+        else {
+            let currentSpeed = Math.sqrt(balls[1].vx ** 2 + balls[1].vy ** 2);
+            balls[1].vx = (balls[1].vx / currentSpeed) * (currentSpeed + 1.5);
+            balls[1].vy = (balls[1].vy / currentSpeed) * (currentSpeed + 1.5);
+            createExplosion(balls[1].x, balls[1].y, '#ff3366', 4);
+        }
+    }
+});
 
 function processGame() {
     let translateX = 0; let translateY = 0;
